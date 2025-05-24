@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ElderPal</title>
+  <link rel="icon" href="logo.png" type="image/png">
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>ElderPal</h1>
+    <p class="instruction">Click the button and speak your command clearly.</p>
+    
+    <div class="mic-button-wrapper">
+      <button id="mic-button" onclick="startListening()">
+        🎙️ Tap to Speak
+      </button>
+    </div>
+    <div id="audio-container"></div>
+    <div id="video-container"></div>
+
+    <div id="output" class="response-box">
+      Awaiting your voice command...
+    </div>
+
+    <div class="features">
+      <h2>🌟 Features of Your Voice Assistant:</h2>
+      <div class="features-grid">
+        <div class="feature-box">
+          <span>⏰</span>
+          <p>Get the current time and date</p>
+        </div>
+        <div class="feature-box">
+          <span>🌦️</span>
+          <p>Check the weather in your city</p>
+        </div>
+        <div class="feature-box">
+          <span>📰</span>
+          <p>Listen to the latest news headlines</p>
+        </div>
+        <div class="feature-box">
+          <span>😂</span>
+          <p>Hear a random joke to brighten your day</p>
+        </div>
+        <div class="feature-box">
+          <span>💊</span>
+          <p>Set reminders for taking medicine</p>
+        </div>
+        <div class="feature-box">
+          <span>🩺</span>
+          <p>Get Health Tips</p>
+        </div>
+        <div class="feature-box">
+          <span>📝</span>
+          <p>Advance Task Management</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="scripts.js"></script>
+</body>
+</html>
