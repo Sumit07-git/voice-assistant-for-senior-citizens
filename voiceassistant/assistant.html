@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ElderPal</title>
+  <link rel="icon" href="logo1.png" type="image/png">
+  <link rel="stylesheet" href="assistant.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/11.9.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore-compat.js"></script>
+
+</head>
+<body class="main-page">
+    <header class="header">
+        <div class="header-content">
+            <h1>
+              <img src="logo1.png" alt="logo" class="logo2">
+              Elderpal-Voice Assistant
+            </h1>
+            <div class="user-info">
+                <span id="currentTime"></span>
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <section class="main-content">
+        <div class="voice-section">
+            <div class="voice-controls">
+                <div class="micBtn">
+                    <button id="mic-button" onclick="startListening()">
+                        <i class="fas fa-microphone"></i>
+                        <span>Tap to Speak</span>
+                    </button>
+                </div>
+            </div>
+
+                <div id="output" class="response-box">
+                Awaiting your voice command...
+            </div>
+    </section>
+
+    <div class="features">
+      <h2>🌟 Features of Your Voice Assistant:</h2>
+      <div class="features-grid">
+        <div class="feature-box">
+          <span>⏰</span>
+          <p>Get the current time and date</p>
+        </div>
+        <div class="feature-box">
+          <span>🌦️</span>
+          <p>Check the weather in your city</p>
+        </div>
+        <div class="feature-box">
+          <span>📰</span>
+          <p>Listen to the latest news headlines</p>
+        </div>
+        <div class="feature-box">
+          <span>😂</span>
+          <p>Hear a random joke to brighten your day</p>
+        </div>
+        <div class="feature-box">
+          <span>💊</span>
+          <p>Set reminders for taking medicine</p>
+        </div>
+        <div class="feature-box">
+          <span>🩺</span>
+          <p>Get Health Tips</p>
+        </div>
+        <div class="feature-box">
+          <span>📝</span>
+          <p>Advance Task Management</p>
+        </div>
+      </div>
+    </div>
+
+    <script src="scripts.js"></script>
+
+    <script type="module">
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA7N3gbwM2b249hIYlcwzzzsQmmen55A4U",
+    authDomain: "voice-assistant-9f259.firebaseapp.com",
+    projectId: "voice-assistant-9f259",
+    storageBucket: "voice-assistant-9f259.firebasestorage.app",
+    messagingSenderId: "485519419762",
+    appId: "1:485519419762:web:f5a03378c5cb4fec21d5eb",
+    measurementId: "G-0B0NDPXW9Z"
+  };
+
+ 
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+
+    
+
+    
+
+</body>
+</html>

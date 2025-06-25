@@ -1,3 +1,12 @@
+const firebaseConfig = {
+  apiKey: "AIzaSyA7N3gbwM2b249hIYlcwzzzsQmmen55A4U",
+  authDomain: "voice-assistant-9f259.firebaseapp.com",
+  projectId: "voice-assistant-9f259",
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const USER_ID = "d-user";
+
 const output = document.getElementById("output");
 
 const synth = window.speechSynthesis;
@@ -18,15 +27,16 @@ function speak(text) {
   output.innerText = "Assistant: " + text;
 }
 
-function startListening() {
+window.startListening = function() {
   recognition.start();
   output.innerText = "Listening...";
-}
+};
 
-recognition.onresult = function (event) {
+
+recognition.onresult = async function (event) {
   const speech = event.results[0][0].transcript.toLowerCase();
   output.innerText = "You said: " + speech;
-  handleCommand(speech);
+  await handleCommand(speech);
 };
 
 recognition.onerror = function (event) {
@@ -34,7 +44,7 @@ recognition.onerror = function (event) {
 };
 
 
-function handleCommand(command) {
+async function handleCommand(command) {
   if (command.includes("time")) {
     const time = new Date().toLocaleTimeString();
     speak("The time is " + time);
@@ -66,44 +76,107 @@ function handleCommand(command) {
   }
 }
 
-function manageTasks(command) {
-  if (command.includes("add task")) {
-    const taskMatch = command.match(/add task (.+)/);
-    if (taskMatch && taskMatch[1]) {
-      const taskDescription = taskMatch[1].trim();
-      tasks.push({ description: taskDescription, completed: false });
-      speak(`Task added: ${taskDescription}`);
+async function addTaskToFirestore(description) {
+  await db.collection('tasks').add({
+    user: USER_ID,
+    description,
+    completed: false,
+    created: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+  async function getTasksFromFirestore() {
+    const snapshot = await db.collection('tasks')
+      .where('user', '==', USER_ID)
+      .get();
+      console.log("Fetched tasks",snapshot.docs.map(doc => doc.data()))
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  }
+
+  async function markTaskCompletedInFirestore(taskIndex) {
+  const tasks = await getTasksFromFirestore();
+  if (taskIndex >= 0 && taskIndex < tasks.length) {
+    const task = tasks[taskIndex];
+    await db.collection('tasks').doc(task.id).update({ completed: true });
+    speak(`Task ${taskIndex + 1} marked as completed.`);
+  } else {
+    speak("Invalid task number. Please try again.");
+  }
+}
+ async function manageTasks(command) {
+  if (!command) {
+    speak("Please say a task command.");
+    return;
+  }
+  const cmd = command.toLowerCase();
+
+  if (cmd.includes("clear completed tasks") || cmd.includes("delete completed tasks")) {
+  await clearCompletedTasks();
+  return;
+}
+
+  if (cmd.startsWith("add task")) {
+    const taskDescription = cmd.replace(/^add task\s*/i, "");
+    if (taskDescription.trim().length > 0) {
+      await addTaskToFirestore(taskDescription.trim());
+      speak(`Task added: ${taskDescription.trim()}`);
     } else {
       speak("Please specify the task you want to add. For example, say 'Add task Buy groceries'.");
     }
-  } else if (command.includes("show tasks") || command.includes("list tasks")) {
+    return;
+  }
 
+  if (cmd.includes("show tasks") || cmd.includes("list tasks")) {
+  try {
+    console.log("Fetching tasks...");
+    const tasks = await getTasksFromFirestore();
+    console.log("Tasks to show:", tasks);
     if (tasks.length === 0) {
       speak("You have no tasks in your list.");
     } else {
+      tasks.forEach((t, i) => console.log(`Task ${i + 1}:`, t));
       const taskList = tasks
         .map((task, index) => `${index + 1}. ${task.description} (${task.completed ? "Completed" : "Pending"})`)
         .join(". ");
       speak(`Here are your tasks: ${taskList}`);
     }
-  } else if (command.includes("mark task")) {
-    
-    const taskNumberMatch = command.match(/mark task (\d+)/);
-    if (taskNumberMatch && taskNumberMatch[1]) {
-      const taskNumber = parseInt(taskNumberMatch[1], 10) - 1;
-      if (taskNumber >= 0 && taskNumber < tasks.length) {
-        tasks[taskNumber].completed = true;
-        speak(`Task ${taskNumber + 1} marked as completed.`);
-      } else {
-        speak("Invalid task number. Please try again.");
-      }
-    } else {
-      speak("Please specify the task number you want to mark as completed. For example, say 'Mark task 1 as completed'.");
+  } catch (err) {
+    console.error("Error fetching tasks:", err);
+    speak("Sorry, I couldn't fetch your tasks due to a technical error.");
+  }
+  return;
+}
+
+  const markTaskMatch = cmd.match(/mark task (\d+)(?:\s+as\s+completed)?/i);
+  if (markTaskMatch) {
+    const taskNumber = parseInt(markTaskMatch[1], 10) - 1;
+    await markTaskCompletedInFirestore(taskNumber);
+    return;
+  }
+
+  speak("I can help you manage tasks. You can say 'Add task', 'Show tasks', or 'Mark task as completed'.");
+}
+
+async function clearCompletedTasks() {
+  try {
+    const snapshot = await db.collection('tasks')
+      .where('user', '==', USER_ID)
+      .where('completed', '==', true)
+      .get();
+    if (snapshot.empty) {
+      speak("You have no completed tasks to clear.");
+      return;
     }
-  } else {
-    speak("I can help you manage tasks. You can say 'Add task', 'Show tasks', or 'Mark task as completed'.");
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+    speak("All completed tasks have been cleared.");
+  } catch (error) {
+    speak("Sorry, I couldn't clear completed tasks due to a technical error.");
   }
 }
+
 
 function giveHealthTip() {
   const healthTips = [
@@ -224,3 +297,19 @@ function stopAlarm() {
     speak("Alarm stopped. Stay healthy!");
   }
 }
+
+function updateTime() {
+  const now = new Date();
+  const dateString = now.toLocaleDateString();
+  const timeString = now.toLocaleTimeString();
+  document.getElementById("currentTime").textContent = `${dateString} ${timeString}`;
+}
+
+updateTime();
+setInterval(updateTime, 1000);
+
+document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem("isLoggedIn")
+      localStorage.removeItem("username")
+      window.location.href = "login.html"
+    })
