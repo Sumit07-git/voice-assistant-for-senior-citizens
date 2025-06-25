@@ -311,5 +311,5 @@ setInterval(updateTime, 1000);
 document.getElementById("logoutBtn").addEventListener("click", () => {
       localStorage.removeItem("isLoggedIn")
       localStorage.removeItem("username")
-      window.location.href = "login.html"
+      window.location.href = "index.html"
     })
