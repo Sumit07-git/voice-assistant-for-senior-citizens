@@ -181,7 +181,7 @@ async function manageTasks(command) {
     return;
   }
 
-  speak("I can help you manage tasks. You can say 'Add task', 'Show tasks', or 'Mark task as completed'.");
+  speak("I can help you manage tasks. You can say 'Add task', 'Show tasks'.");
 }
 
 
