@@ -1,34 +1,34 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const loginForm = document.getElementById("loginForm");
-    if (localStorage.getItem("isLoggedIn") === "true") {
-        window.location.href = "assistant.html";
-        return;
+  const loginForm = document.getElementById("loginForm");
+  const errorMessage = document.getElementById("error-message");
+
+  
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      window.location.href = "assistant.html";
     }
+  });
 
-    if (!loginForm) {
-        console.error("Login form not found!");
-        return;
-    }
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    loginForm.addEventListener("submit", (e) => {
-        e.preventDefault();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
 
-        const username = document.getElementById("username")?.value.trim();
-        const password = document.getElementById("password")?.value;
-        const users = JSON.parse(localStorage.getItem("registeredUsers")) || [];
-        const foundUser = users.find(
-            (user) =>
-                user.username.toLowerCase() === username.toLowerCase() &&
-                user.password === password
-        );
+      if (errorMessage) errorMessage.textContent = "";
 
-        if (foundUser) {
-            localStorage.setItem("isLoggedIn", "true");
-            localStorage.setItem("username", foundUser.username);
-            window.location.href = "assistant.html";
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        
+      } catch (error) {
+        if (errorMessage) {
+          errorMessage.textContent = "Invalid email or password. Please try again.";
         } else {
-            alert("Invalid username or password. Please try again.");
-            document.getElementById("password").value = "";
+          alert("Invalid email or password. Please try again.");
         }
+        document.getElementById("password").value = "";
+      }
     });
+  }
 });

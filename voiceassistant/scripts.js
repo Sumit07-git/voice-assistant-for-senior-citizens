@@ -5,7 +5,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-const USER_ID = "d-user";
+const auth = firebase.auth();
 
 const output = document.getElementById("output");
 
@@ -18,9 +18,6 @@ recognition.maxAlternatives = 1;
 let alarmInterval;
 let alarmActive = false;
 
-
-const userName = "Pankaj";
-
 function speak(text) {
   const utterThis = new SpeechSynthesisUtterance(text);
   synth.speak(utterThis);
@@ -32,7 +29,6 @@ window.startListening = function() {
   output.innerText = "Listening...";
 };
 
-
 recognition.onresult = async function (event) {
   const speech = event.results[0][0].transcript.toLowerCase();
   output.innerText = "You said: " + speech;
@@ -42,7 +38,6 @@ recognition.onresult = async function (event) {
 recognition.onerror = function (event) {
   output.innerText = "Error occurred in recognition: " + event.error;
 };
-
 
 async function handleCommand(command) {
   if (command.includes("time")) {
@@ -67,42 +62,79 @@ async function handleCommand(command) {
     setMedicationReminder(command);
   } else if (command.includes("stop alarm")) {
     stopAlarm();
-  }else if (command.includes("health tip")) {
+  } else if (command.includes("health tip")) {
     giveHealthTip();
-  }else if (command.includes("task")) {
+  } else if (command.includes("task")) {
     manageTasks(command);
   } else {
     speak("Sorry, I didn't understand that.");
   }
 }
 
+
+
+function getCurrentUserId() {
+  return auth.currentUser ? auth.currentUser.uid : null;
+}
+
 async function addTaskToFirestore(description) {
-  await db.collection('tasks').add({
-    user: USER_ID,
+  const uid = getCurrentUserId();
+  if (!uid) {
+    speak("You must be logged in to add tasks.");
+    return;
+  }
+  await db.collection('users').doc(uid).collection('tasks').add({
     description,
     completed: false,
     created: firebase.firestore.FieldValue.serverTimestamp()
   });
 }
-  async function getTasksFromFirestore() {
-    const snapshot = await db.collection('tasks')
-      .where('user', '==', USER_ID)
-      .get();
-      console.log("Fetched tasks",snapshot.docs.map(doc => doc.data()))
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  }
 
-  async function markTaskCompletedInFirestore(taskIndex) {
+async function getTasksFromFirestore() {
+  const uid = getCurrentUserId();
+  if (!uid) {
+    speak("You must be logged in to view tasks.");
+    return [];
+  }
+  const snapshot = await db.collection('users').doc(uid).collection('tasks').orderBy('created', 'asc').get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+async function markTaskCompletedInFirestore(taskIndex) {
   const tasks = await getTasksFromFirestore();
   if (taskIndex >= 0 && taskIndex < tasks.length) {
     const task = tasks[taskIndex];
-    await db.collection('tasks').doc(task.id).update({ completed: true });
+    const uid = getCurrentUserId();
+    await db.collection('users').doc(uid).collection('tasks').doc(task.id).update({ completed: true });
     speak(`Task ${taskIndex + 1} marked as completed.`);
   } else {
     speak("Invalid task number. Please try again.");
   }
 }
- async function manageTasks(command) {
+
+async function clearCompletedTasks() {
+  const uid = getCurrentUserId();
+  if (!uid) {
+    speak("You must be logged in to clear tasks.");
+    return;
+  }
+  try {
+    const snapshot = await db.collection('users').doc(uid).collection('tasks')
+      .where('completed', '==', true).get();
+    if (snapshot.empty) {
+      speak("You have no completed tasks to clear.");
+      return;
+    }
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    speak("All completed tasks have been cleared.");
+  } catch (error) {
+    speak("Sorry, I couldn't clear completed tasks due to a technical error.");
+  }
+}
+
+async function manageTasks(command) {
   if (!command) {
     speak("Please say a task command.");
     return;
@@ -110,9 +142,9 @@ async function addTaskToFirestore(description) {
   const cmd = command.toLowerCase();
 
   if (cmd.includes("clear completed tasks") || cmd.includes("delete completed tasks")) {
-  await clearCompletedTasks();
-  return;
-}
+    await clearCompletedTasks();
+    return;
+  }
 
   if (cmd.startsWith("add task")) {
     const taskDescription = cmd.replace(/^add task\s*/i, "");
@@ -126,25 +158,21 @@ async function addTaskToFirestore(description) {
   }
 
   if (cmd.includes("show tasks") || cmd.includes("list tasks")) {
-  try {
-    console.log("Fetching tasks...");
-    const tasks = await getTasksFromFirestore();
-    console.log("Tasks to show:", tasks);
-    if (tasks.length === 0) {
-      speak("You have no tasks in your list.");
-    } else {
-      tasks.forEach((t, i) => console.log(`Task ${i + 1}:`, t));
-      const taskList = tasks
-        .map((task, index) => `${index + 1}. ${task.description} (${task.completed ? "Completed" : "Pending"})`)
-        .join(". ");
-      speak(`Here are your tasks: ${taskList}`);
+    try {
+      const tasks = await getTasksFromFirestore();
+      if (tasks.length === 0) {
+        speak("You have no tasks in your list.");
+      } else {
+        const taskList = tasks
+          .map((task, index) => `${index + 1}. ${task.description} (${task.completed ? "Completed" : "Pending"})`)
+          .join(". ");
+        speak(`Here are your tasks: ${taskList}`);
+      }
+    } catch (err) {
+      speak("Sorry, I couldn't fetch your tasks due to a technical error.");
     }
-  } catch (err) {
-    console.error("Error fetching tasks:", err);
-    speak("Sorry, I couldn't fetch your tasks due to a technical error.");
+    return;
   }
-  return;
-}
 
   const markTaskMatch = cmd.match(/mark task (\d+)(?:\s+as\s+completed)?/i);
   if (markTaskMatch) {
@@ -156,26 +184,6 @@ async function addTaskToFirestore(description) {
   speak("I can help you manage tasks. You can say 'Add task', 'Show tasks', or 'Mark task as completed'.");
 }
 
-async function clearCompletedTasks() {
-  try {
-    const snapshot = await db.collection('tasks')
-      .where('user', '==', USER_ID)
-      .where('completed', '==', true)
-      .get();
-    if (snapshot.empty) {
-      speak("You have no completed tasks to clear.");
-      return;
-    }
-    const batch = db.batch();
-    snapshot.docs.forEach(doc => {
-      batch.delete(doc.ref);
-    });
-    await batch.commit();
-    speak("All completed tasks have been cleared.");
-  } catch (error) {
-    speak("Sorry, I couldn't clear completed tasks due to a technical error.");
-  }
-}
 
 
 function giveHealthTip() {
@@ -191,11 +199,10 @@ function giveHealthTip() {
     "Take short breaks while working to avoid eye strain.",
     "Make time for regular check-ups with your doctor."
   ];
-
-  
   const randomTip = healthTips[Math.floor(Math.random() * healthTips.length)];
   speak(randomTip);
 }
+
 async function getWeather(city) {
   const apiKey = '24187e76308498f5275b891df9eb7dba';
   const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
@@ -243,7 +250,6 @@ async function getNewsBrief() {
     const headlines = data.articles.map(article => article.title);
     speak("Here are the top headlines: " + headlines.join(". Next, "));
   } catch (error) {
-    console.error("GNews fetch error:", error);
     speak("Sorry, I couldn't fetch the news right now.");
   }
 }
@@ -308,8 +314,78 @@ function updateTime() {
 updateTime();
 setInterval(updateTime, 1000);
 
+
 document.getElementById("logoutBtn").addEventListener("click", () => {
-      localStorage.removeItem("isLoggedIn")
-      localStorage.removeItem("username")
-      window.location.href = "index.html"
-    })
+  auth.signOut().then(() => {
+    window.location.href = "index.html";
+  });
+});
+
+
+auth.onAuthStateChanged(user => {
+  if (!user) {
+    window.location.href = "index.html";
+  }
+});
+
+const FEATURE_MESSAGES = {
+  time: {
+    title: "Get the Current Time and Date",
+    message: 'Say: <b>"What is the time?"</b> or <b>"Tell me today\'s date."</b>'
+  },
+  weather: {
+    title: "Check the Weather",
+    message: 'Say: <b>"What\'s the weather in [your city]?"</b>'
+  },
+  news: {
+    title: "Latest News Headlines",
+    message: 'Say: <b>"Tell me the news."</b> or <b>"Give me latest news"</b>'
+  },
+  joke: {
+    title: "Hear a Random Joke",
+    message: 'Say: <b>"Tell me a joke."'
+  },
+  reminder: {
+    title: "Set Medicine Reminders",
+    message: 'Say: <b>"Remind me to take medicine at 8 PM."'
+  },
+  tips: {
+    title: "Get Health Tips",
+    message: 'Say: <b>"Give me a health tip."'
+  },
+  tasks: {
+    title: "Advance Task Management",
+    message: 'Say: <b>"Add task "your task"."</b> or <b>"Show tasks."</b>'
+  }
+};
+
+document.addEventListener("DOMContentLoaded", function () {
+  const featureBoxes = document.querySelectorAll('.feature-box');
+  const modal = document.getElementById('feature-message-modal');
+  const modalTitle = document.getElementById('feature-message-title');
+  const modalText = document.getElementById('feature-message-text');
+  const closeModal = document.getElementById('closeModal');
+
+  featureBoxes.forEach(box => {
+    box.addEventListener('click', function () {
+      const feature = box.getAttribute('data-feature');
+      const info = FEATURE_MESSAGES[feature];
+      if (info) {
+        modalTitle.innerHTML = info.title;
+        modalText.innerHTML = info.message;
+        modal.style.display = 'block';
+      }
+    });
+  });
+
+  closeModal.onclick = function () {
+    modal.style.display = "none";
+  };
+
+  window.onclick = function (event) {
+    if (event.target === modal) {
+      modal.style.display = "none";
+    }
+  };
+});
+

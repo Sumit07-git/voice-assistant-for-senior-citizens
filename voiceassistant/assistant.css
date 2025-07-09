@@ -177,3 +177,56 @@ body {
   font-size: 1rem;
 }
 
+.feature-message-modal {
+  display: none; 
+  position: fixed; 
+  z-index: 1000; 
+  left: 0;
+  top: 0;
+  width: 100vw; 
+  height: 100vh; 
+  overflow: auto; 
+  background-color: rgba(0,0,0,0.4); 
+}
+
+.feature-message-content {
+  background-color: #fff;
+  margin: 10% auto; 
+  padding: 2em;
+  border: 1px solid #888;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+  text-align: center;
+  position: relative;
+}
+
+.feature-message-content h3 {
+  color: #d84315;
+}
+.feature-message-content p {
+  color: #1565c0; 
+}
+
+.close-btn {
+  color: #aaa;
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.close-btn:hover { color: #333; }
+
+.feature-box {
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.feature-box:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.07);
+}
+
